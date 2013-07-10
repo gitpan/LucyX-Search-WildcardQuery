@@ -2,7 +2,6 @@ Changes
 lib/LucyX/Search/NOTWildcardQuery.pm
 lib/LucyX/Search/WildcardCompiler.pm
 lib/LucyX/Search/WildcardQuery.pm
-lib/LucyX/Search/WildcardScorer.pm
 Makefile.PL
 MANIFEST
 README
@@ -10,4 +9,5 @@ t/00-load.t
 t/01-search.t
 t/pod-coverage.t
 t/pod.t
-META.yml                                 Module meta-data (added by MakeMaker)
+META.yml                                 Module YAML meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)

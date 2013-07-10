@@ -6,17 +6,17 @@ use Data::Dump qw( dump );
 use File::Temp qw( tempdir );
 my $invindex = tempdir( CLEANUP => 1 );
 
-use Lucy::Plan::Schema;
-use Lucy::Plan::FullTextType;
-use Lucy::Analysis::PolyAnalyzer;
-use Lucy::Index::Indexer;
-use Lucy::Search::IndexSearcher;
+use Lucy;
 
 use_ok('LucyX::Search::NOTWildcardQuery');
 use_ok('LucyX::Search::WildcardQuery');
 
+my $case_folder = Lucy::Analysis::CaseFolder->new;
+my $tokenizer   = Lucy::Analysis::RegexTokenizer->new;
+my $analyzer    = Lucy::Analysis::PolyAnalyzer->new(
+    analyzers => [ $case_folder, $tokenizer, ], );
+
 my $schema   = Lucy::Plan::Schema->new;
-my $analyzer = Lucy::Analysis::PolyAnalyzer->new( language => 'en', );
 my $fulltext = Lucy::Plan::FullTextType->new(
     analyzer => $analyzer,
     sortable => 1,
@@ -35,31 +35,37 @@ my $indexer = Lucy::Index::Indexer->new(
 
 my %docs = (
     'doc1' => {
-        title  => 'i am doc1',
+        title  => 'Acute-Phase Reaction',
         color  => 'red blue orange',
         date   => '20100329',
         option => 'a',
     },
     'doc2' => {
-        title  => 'i am doc2',
+        title  => 'Leukemia, Biphenotypic, Acute',
         color  => 'green yellow purple',
         date   => '20100301',
         option => 'b',
     },
     'doc3' => {
-        title  => 'i am doc3',
+        title  => 'Leukemia, Megakaryoblastic, Acute',
         color  => 'brown black white',
         date   => '19720329',
         option => '',
     },
     'doc4' => {
-        title  => 'i am doc4',
+        title  => 'Porphyria, Acute Intermittent',
         color  => 'white',
         date   => '20100510',
         option => 'c',
     },
     'doc5' => {
-        title  => 'unlike the others',
+        title  => 'Cholecystitis, Acute',
+        color  => 'white',
+        date   => '20100510',
+        option => 'c',
+    },
+    'doc6' => {
+        title  => 'Acute Kidney Injury',
         color  => 'teal',
         date   => '19000101',
         option => 'd',
@@ -76,13 +82,20 @@ $indexer->commit;
 my $searcher = Lucy::Search::IndexSearcher->new( index => $invindex, );
 
 # search
-my %queries = (
+my %queries2 = (
     'color:re*'     => 1,
     'color:re?'     => 1,
     'color:br?wn'   => 1,
     'color:*n'      => 2,
     'NOT option:?*' => 1,
     'title:*oc*'    => 4,
+);
+
+my %queries = (
+    'title:*acute*' => 6,
+    'title:*cute*'  => 6,
+    'title:*kemia*' => 2,
+    'title:*idney*' => 1
 );
 
 for my $str ( sort keys %queries ) {
@@ -98,7 +111,7 @@ for my $str ( sort keys %queries ) {
     my $hits = $searcher->hits(
         query      => $query,
         offset     => 0,
-        num_wanted => 5,        # more than we have
+        num_wanted => 10,       # more than we have
     );
 
     is( $hits->total_hits, $hits_expected, "$str = $hits_expected" );
@@ -106,6 +119,14 @@ for my $str ( sort keys %queries ) {
     if ( $hits->total_hits != $hits_expected ) {
         diag( dump( $query->dump ) );
     }
+
+    my $count = 0;
+    while ( my $hit = $hits->next ) {
+        $count++;
+        print "\t", $count, "\n";
+        ## my $desc = $hit->{desc};
+    }
+
 }
 
 # allow for adding new queries without adjusting test count
@@ -123,6 +144,10 @@ sub make_query {
         );
     }
     else {
+        print "\n";
+        print "field == \'$field\'\n";
+        print "term  == \'$term\'\n";
+
         $query = LucyX::Search::WildcardQuery->new(
             field => $field,
             term  => $term,
